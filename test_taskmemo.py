@@ -99,15 +99,17 @@ class TaskMemoTests(unittest.TestCase):
 
     def test_done_with_unknown_id_fails_without_changing_tasks(self):
         self.run_taskmemo("add", "買い物に行く")
-        before = (self.workdir / "tasks.json").read_text(encoding="utf-8")
+        task_file = self.workdir / "tasks.json"
+        before = task_file.read_bytes()
 
-        result = self.run_raw("done", "99")
+        for task_id in ("0", "-1", "99"):
+            with self.subTest(task_id=task_id):
+                result = self.run_raw("done", task_id)
 
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("99", result.stderr)
-        self.assertEqual(
-            (self.workdir / "tasks.json").read_text(encoding="utf-8"), before
-        )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(f"error: task {task_id} not found", result.stderr)
+                self.assertNotIn("Traceback", result.stdout + result.stderr)
+                self.assertEqual(task_file.read_bytes(), before)
 
     def test_done_with_missing_save_file_fails_without_creating_it(self):
         result = self.run_raw("done", "1")
